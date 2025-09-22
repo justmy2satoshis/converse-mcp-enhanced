@@ -1,0 +1,49 @@
+{
+  "name": "converse-mcp-enhanced",
+  "version": "1.0.0",
+  "description": "Multi-model AI conversation MCP for Claude Desktop - 80%+ cost optimization",
+  "main": "src/server.py",
+  "scripts": {
+    "start": "python src/server.py",
+    "test": "pytest",
+    "lint": "pylint src/**/*.py",
+    "dev": "python src/server.py"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "ai",
+    "multi-model",
+    "ollama",
+    "gpt-4",
+    "gemini",
+    "cost-optimization",
+    "model-context-protocol"
+  ],
+  "author": "MCP Federation Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/justmy2satoshis/converse-mcp-enhanced.git"
+  },
+  "bugs": {
+    "url": "https://github.com/justmy2satoshis/converse-mcp-enhanced/issues"
+  },
+  "homepage": "https://github.com/justmy2satoshis/converse-mcp-enhanced#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.8.0"
+  },
+  "files": [
+    "src/**/*",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
