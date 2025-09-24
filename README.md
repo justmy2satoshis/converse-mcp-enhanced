@@ -38,13 +38,19 @@ Multi-model AI conversation MCP for Claude Desktop. Seamlessly integrate with GP
 
 ```
 Priority Order (Highest to Lowest):
-1. Ollama local models (FREE)
-2. Cached responses (FREE)
-3. Low-cost API models (GPT-3.5)
-4. Premium models (GPT-4, Claude)
+1. Ollama local models (FREE) - ALWAYS FIRST
+2. Intelligent model selection based on query
+3. API models only as fallback
 
-Result: 80-95% reduction in API costs
+Result: 100% FREE operation when Ollama available
 ```
+
+### 🧠 Smart Model Selection (v1.1.0)
+The system automatically selects the optimal Ollama model:
+- **Simple queries** (<50 chars) → phi3:mini (fastest)
+- **Code-related** → codellama:7b
+- **Complex queries** (>200 chars) → qwen2.5-coder:32b
+- **Default** → llama3.2:3b (balanced)
 
 ## 📦 Installation
 
