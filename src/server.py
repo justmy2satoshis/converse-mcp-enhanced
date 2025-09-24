@@ -15,8 +15,120 @@ from enum import Enum
 import httpx
 from datetime import datetime, timedelta
 
+# Import our new OllamaManager
+from ollama_manager import OllamaManager
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Exhaustive Model Configuration Dictionary
+PROVIDER_MODELS = {
+    "ollama": {
+        "api_endpoint": "http://localhost:11434",
+        "models": [
+            # Llama Series
+            "llama3.3:70b", "llama3.2-vision:11b", "llama3.2-vision:90b",
+            "llama3.1:8b", "llama3.1:70b", "llama3:8b", "llama3:70b",
+            "llama2:7b", "llama2:13b", "llama2:70b",
+            # Mistral Series
+            "mistral:7b", "mistral-small:3b", "mistral-small:3.1",
+            "mistral-large:2", "mixtral:8x7b", "mixtral:8x22b",
+            # Qwen Series
+            "qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b", "qwen2.5:72b", "qwen2.5-coder",
+            # Google Models
+            "gemma2:2b", "gemma2:9b", "gemma2:27b", "gemma:2b", "gemma:7b",
+            # Microsoft
+            "phi3:mini", "phi3:medium", "phi-3.5:3.8b",
+            # Specialized Models
+            "codellama:7b", "codellama:13b", "codellama:34b",
+            "starcoder:7b", "deepseek-coder:6.7b", "deepseek-coder:33b",
+            # Multimodal
+            "llava:7b", "llava:13b", "llava:34b",
+            # Small Models
+            "smollm2:135m", "smollm2:360m", "smollm2:1.7b",
+        ]
+    },
+    "anthropic": {
+        "api_endpoint": "https://api.anthropic.com/v1",
+        "models": [
+            "claude-opus-4-1-20250805", "claude-opus-4", "claude-sonnet-4",
+            "claude-3.7-sonnet", "claude-3.5-sonnet-20241022", "claude-3.5-haiku-20241022",
+            "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"
+        ]
+    },
+    "openai": {
+        "api_endpoint": "https://api.openai.com/v1",
+        "models": [
+            "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-chat",
+            "o3-pro", "o3", "o3-mini", "o1", "o1-mini",
+            "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4o",
+            "gpt-4-turbo-2024-04-09", "gpt-4-turbo", "gpt-4-32k", "gpt-4",
+            "gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-instruct"
+        ]
+    },
+    "google": {
+        "api_endpoint": "https://generativelanguage.googleapis.com/v1",
+        "models": [
+            "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite",
+            "gemini-2.5-flash-image", "gemini-2.5-pro-preview-tts",
+            "gemini-2.0-flash", "gemini-2.0-flash-lite",
+            "gemini-2.0-flash-preview-image-generation", "gemini-2.0-flash-live"
+        ]
+    },
+    "xai": {
+        "api_endpoint": "https://api.x.ai/v1",
+        "models": [
+            "grok-4-0709", "grok-4-fast", "grok-4-fast-reasoning", "grok-4-fast-non-reasoning",
+            "grok-3", "grok-3-mini", "grok-2-1212", "grok-2-vision-1212", "grok-2",
+            "grok-code-fast-1", "grok-1"
+        ]
+    },
+    "perplexity": {
+        "api_endpoint": "https://api.perplexity.ai",
+        "models": [
+            "sonar", "sonar-pro", "sonar-reasoning", "sonar-reasoning-pro", "sonar-deep-research",
+            "sonar-small", "sonar-medium", "sonar-small-chat", "sonar-medium-chat",
+            "sonar-small-online", "sonar-medium-online",
+            "pplx-7b-online", "pplx-70b-online", "pplx-7b-chat", "pplx-70b-chat"
+        ]
+    }
+}
+
+# Helper function to get all available models for a provider
+def get_provider_models(provider_name):
+    """Returns list of model IDs for a specific provider"""
+    return PROVIDER_MODELS.get(provider_name, {}).get("models", [])
+
+# Helper function to get latest/recommended models
+def get_recommended_models():
+    """Returns the recommended latest models from each provider"""
+    return {
+        "xai": ["grok-4-0709", "grok-4-fast", "grok-code-fast-1"],
+        "anthropic": ["claude-opus-4-1-20250805", "claude-sonnet-4", "claude-3.7-sonnet"],
+        "openai": ["gpt-5", "gpt-5-mini", "o3-mini", "gpt-4.1"],
+        "google": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
+        "perplexity": ["sonar-pro", "sonar-reasoning-pro", "sonar-deep-research"],
+        "ollama": ["llama3.3:70b", "mistral-large:2", "qwen2.5:72b", "gemma2:27b"]
+    }
+
+# Model aliases for backward compatibility
+MODEL_ALIASES = {
+    "gemini-pro": "gemini-2.5-pro",
+    "gemini-pro-vision": "gemini-2.5-flash",
+    "claude-3-opus": "claude-opus-4-1-20250805",
+    "claude-3-sonnet": "claude-sonnet-4",
+    "gpt-4-vision-preview": "gpt-4o"
+}
+
+# Cost optimization tiers
+COST_TIERS = {
+    "free": ["ollama/*"],  # All Ollama models
+    "low": ["claude-3.5-haiku-20241022", "gpt-3.5-turbo", "gemini-2.5-flash-lite", "sonar-small"],
+    "medium": ["claude-sonnet-4", "gpt-5-mini", "gemini-2.5-flash", "sonar-pro"],
+    "high": ["claude-opus-4-1-20250805", "gpt-5", "gemini-2.5-pro", "grok-4-0709"]
+}
+
+# APIManager alias will be set at the end of the file for compatibility
 
 
 class ProviderStatus(Enum):
@@ -69,6 +181,9 @@ class OptimizedAPIManager:
         self.usage_stats = UsageStats()
         self.user_preference: Optional[str] = None
 
+        # Initialize Ollama Manager for auto-detection
+        self.ollama_manager = OllamaManager()
+
         # Load user preferences if they exist
         self.load_preferences()
 
@@ -96,16 +211,19 @@ class OptimizedAPIManager:
         """Initialize all supported providers with CORRECT priorities"""
 
         # PRIORITY 1: Ollama (FREE and LOCAL) - ALWAYS FIRST
+        # Use auto-detected models from OllamaManager
+        ollama_models = self.ollama_manager.available_models if self.ollama_manager.is_available else []
+
         self.providers["ollama"] = ProviderConfig(
             name="ollama",
             priority=1,  # HIGHEST PRIORITY
-            enabled=True,
+            enabled=self.ollama_manager.is_available,
             api_key=None,
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-            models=[],  # Will be populated dynamically
+            models=ollama_models,  # Use auto-detected models
             cost_per_1k_tokens=0.0,
             is_free=True,
-            status=ProviderStatus.NOT_CONFIGURED
+            status=ProviderStatus.AVAILABLE if self.ollama_manager.is_available else ProviderStatus.NOT_CONFIGURED
         )
 
         # Other providers with LOWER priorities
@@ -120,7 +238,20 @@ class OptimizedAPIManager:
                 enabled=True,
                 api_key=anthropic_key,
                 base_url="https://api.anthropic.com/v1",
-                models=["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
+                models=[
+                    # Claude 4 Series (2025)
+                    "claude-opus-4-1-20250805",  # Latest Opus 4.1 (August 2025)
+                    "claude-opus-4",             # Original Opus 4 (May 2025)
+                    "claude-sonnet-4",           # Sonnet 4 (May 2025)
+                    # Claude 3.7/3.5 Series (Still Available)
+                    "claude-3.7-sonnet",         # Extended thinking capabilities
+                    "claude-3.5-sonnet-20241022", # October 2024 update
+                    "claude-3.5-haiku-20241022",  # Fast, affordable
+                    # Legacy Claude 3 (for backward compatibility)
+                    "claude-3-opus-20240229",
+                    "claude-3-sonnet-20240229",
+                    "claude-3-haiku-20240307",
+                ],
                 cost_per_1k_tokens=0.015,  # Claude 3 Sonnet pricing
                 status=ProviderStatus.AVAILABLE
             )
@@ -135,7 +266,32 @@ class OptimizedAPIManager:
                 enabled=True,
                 api_key=openai_key,
                 base_url="https://api.openai.com/v1",
-                models=["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo-preview"],
+                models=[
+                    # GPT-5 Series (2025 - Latest)
+                    "gpt-5",                # Flagship model (registration required)
+                    "gpt-5-mini",           # Smaller variant
+                    "gpt-5-nano",           # Smallest variant
+                    "gpt-5-chat",           # Chat-optimized
+                    # O-Series Reasoning Models
+                    "o3-pro",               # Advanced reasoning (Pro/Team users)
+                    "o3",                   # Standard reasoning model
+                    "o3-mini",              # Cost-efficient reasoning
+                    "o1",                   # Previous gen reasoning
+                    "o1-mini",              # Previous gen mini
+                    # GPT-4 Series (Still Available)
+                    "gpt-4.5",              # Research preview
+                    "gpt-4.1",              # Coding specialized
+                    "gpt-4.1-mini",         # Fast, efficient
+                    "gpt-4o",               # Multimodal
+                    "gpt-4-turbo-2024-04-09",
+                    "gpt-4-turbo",
+                    "gpt-4-32k",
+                    "gpt-4",
+                    # GPT-3.5 Series
+                    "gpt-3.5-turbo",
+                    "gpt-3.5-turbo-16k",
+                    "gpt-3.5-turbo-instruct",
+                ],
                 cost_per_1k_tokens=0.03,  # GPT-4 pricing
                 status=ProviderStatus.AVAILABLE
             )
@@ -150,7 +306,22 @@ class OptimizedAPIManager:
                 enabled=True,
                 api_key=gemini_key,
                 base_url="https://generativelanguage.googleapis.com/v1",
-                models=["gemini-pro", "gemini-pro-vision"],
+                models=[
+                    # Gemini 2.5 Series (Latest - 2025)
+                    "gemini-2.5-pro",           # State-of-the-art thinking model
+                    "gemini-2.5-flash",         # Best price-performance
+                    "gemini-2.5-flash-lite",    # Most cost-effective
+                    "gemini-2.5-flash-image",   # Image generation (preview)
+                    "gemini-2.5-pro-preview-tts", # Text-to-speech
+                    # Gemini 2.0 Series (Current)
+                    "gemini-2.0-flash",         # Multimodal with tool use
+                    "gemini-2.0-flash-lite",    # Optimized for efficiency
+                    "gemini-2.0-flash-preview-image-generation",
+                    "gemini-2.0-flash-live",    # Low-latency voice/video
+                    # Legacy names for compatibility
+                    "gemini-pro",  # Maps to gemini-2.5-pro
+                    "gemini-pro-vision",  # Maps to gemini-2.5-flash
+                ],
                 cost_per_1k_tokens=0.001,  # Gemini Pro pricing
                 status=ProviderStatus.AVAILABLE
             )
@@ -165,7 +336,24 @@ class OptimizedAPIManager:
                 enabled=True,
                 api_key=xai_key,
                 base_url="https://api.x.ai/v1",
-                models=["grok-1", "grok-2"],
+                models=[
+                    # Grok 4 Series (Latest)
+                    "grok-4-0709",           # Flagship model, unparalleled performance
+                    "grok-4-fast",           # Cost-efficient reasoning
+                    "grok-4-fast-reasoning", # Fast reasoning model
+                    "grok-4-fast-non-reasoning", # Fast non-reasoning variant
+                    # Grok 3 Series
+                    "grok-3",                # Generally available via API
+                    "grok-3-mini",           # Smaller, faster variant
+                    # Grok 2 Series
+                    "grok-2-1212",           # Better accuracy and multilingual
+                    "grok-2-vision-1212",    # Vision capabilities
+                    "grok-2",                # Legacy name
+                    # Specialized
+                    "grok-code-fast-1",      # Agentic coding ($0.20/1M input)
+                    # Legacy
+                    "grok-1",                # Backward compatibility
+                ],
                 cost_per_1k_tokens=0.02,  # Estimated
                 status=ProviderStatus.AVAILABLE
             )
@@ -180,7 +368,26 @@ class OptimizedAPIManager:
                 enabled=True,
                 api_key=perplexity_key,
                 base_url="https://api.perplexity.ai",
-                models=["pplx-7b-online", "pplx-70b-online"],
+                models=[
+                    # Sonar Family (Proprietary - 2025)
+                    "sonar",                    # Base model (LLaMA 3.1 70B based)
+                    "sonar-pro",                # Enhanced precision and context
+                    "sonar-reasoning",          # Chain-of-Thought with live search
+                    "sonar-reasoning-pro",      # DeepSeek-R1 1776 powered
+                    "sonar-deep-research",      # Most advanced for research
+                    # Cost-Efficient Variants
+                    "sonar-small",
+                    "sonar-medium",
+                    "sonar-small-chat",
+                    "sonar-medium-chat",
+                    "sonar-small-online",       # With web search
+                    "sonar-medium-online",      # With web search
+                    # Legacy Models (Backward compatibility)
+                    "pplx-7b-online",
+                    "pplx-70b-online",
+                    "pplx-7b-chat",
+                    "pplx-70b-chat",
+                ],
                 cost_per_1k_tokens=0.005,  # Estimated
                 status=ProviderStatus.AVAILABLE
             )
@@ -196,9 +403,17 @@ class OptimizedAPIManager:
                 response = httpx.get(f"{self.providers['ollama'].base_url}/api/tags", timeout=5)
                 if response.status_code == 200:
                     models = response.json().get("models", [])
-                    self.providers["ollama"].models = [m["name"] for m in models]
+                    installed_models = [m["name"] for m in models]
+
+                    # Keep track of both potential and installed models
+                    self.providers["ollama"].models = installed_models if installed_models else self.providers["ollama"].models
                     self.providers["ollama"].status = ProviderStatus.AVAILABLE
-                    logger.info(f"✅ OLLAMA AVAILABLE (FREE) with {len(models)} models: {', '.join(self.providers['ollama'].models)}")
+
+                    # Store all potential models for reference
+                    if not hasattr(self.providers["ollama"], 'all_models'):
+                        self.providers["ollama"].all_models = get_provider_models("ollama")
+
+                    logger.info(f"✅ OLLAMA AVAILABLE (FREE) with {len(installed_models)} installed models: {', '.join(installed_models[:5])}")
 
                     # If Ollama is available, log cost savings potential
                     if any(p.api_key for p in self.providers.values()):
@@ -250,13 +465,134 @@ class OptimizedAPIManager:
 
         return available
 
+    def _select_optimal_ollama_model(self, prompt: str) -> str:
+        """Select the most appropriate Ollama model based on prompt complexity"""
+        if not self.ollama_manager.available_models:
+            return "llama3.2:3b"  # Default
+
+        prompt_length = len(prompt)
+        prompt_lower = prompt.lower()
+
+        # Map available models to their types
+        available = set(self.ollama_manager.available_models)
+
+        # Simple/fast queries - use smallest model
+        if prompt_length < 50:
+            for model in ["phi3:mini", "llama3.2:3b", "llama3.2"]:
+                if any(m.startswith(model.split(':')[0]) for m in available):
+                    return next(m for m in available if m.startswith(model.split(':')[0]))
+
+        # Code-related queries - use code model
+        if any(word in prompt_lower for word in ['code', 'function', 'class', 'def ', 'import', 'programming', 'script']):
+            for model in ["codellama", "qwen2.5-coder"]:
+                if any(model in m for m in available):
+                    return next(m for m in available if model in m)
+
+        # Complex/long queries - use larger model
+        if prompt_length > 200:
+            for model in ["qwen2.5-coder", "llama3.2"]:
+                if any(model in m for m in available):
+                    return next(m for m in available if model in m)
+
+        # Default to first available
+        return list(available)[0]
+
+    def select_provider_for_model(self, model: Optional[str]) -> Optional[ProviderConfig]:
+        """Select the best provider for a specific model with Ollama priority"""
+        if not model:
+            return None
+
+        # Refresh Ollama models periodically
+        if self.ollama_manager.should_refresh():
+            self.ollama_manager.refresh_models()
+            # Update Ollama provider with new models
+            if "ollama" in self.providers:
+                self.providers["ollama"].models = self.ollama_manager.available_models
+
+        # Check if model is available in Ollama first (FREE)
+        if self.ollama_manager.is_model_available(model):
+            actual_model = self.ollama_manager.get_actual_model_name(model)
+            if actual_model and "ollama" in self.providers:
+                logger.info(f"✅ Model '{model}' found in Ollama as '{actual_model}'")
+                # Store the actual model name for use
+                self._actual_model_name = actual_model
+                return self.providers["ollama"]
+
+        # Check other providers based on model name patterns
+        model_lower = model.lower()
+
+        # Claude models -> Anthropic
+        if "claude" in model_lower or "opus" in model_lower or "sonnet" in model_lower:
+            if "anthropic" in self.providers and self.providers["anthropic"].enabled:
+                return self.providers["anthropic"]
+
+        # GPT models -> OpenAI
+        if model_lower.startswith("gpt") or model_lower.startswith("o3") or "davinci" in model_lower:
+            if "openai" in self.providers and self.providers["openai"].enabled:
+                return self.providers["openai"]
+
+        # Gemini models -> Google
+        if "gemini" in model_lower or "bison" in model_lower:
+            if "google" in self.providers and self.providers["google"].enabled:
+                return self.providers["google"]
+
+        # Grok models -> XAI
+        if "grok" in model_lower:
+            if "xai" in self.providers and self.providers["xai"].enabled:
+                return self.providers["xai"]
+
+        # Perplexity models
+        if "pplx" in model_lower or "sonar" in model_lower:
+            if "perplexity" in self.providers and self.providers["perplexity"].enabled:
+                return self.providers["perplexity"]
+
+        return None
+
     async def send_message(self, message: str, model: Optional[str] = None, **kwargs) -> Tuple[str, str]:
         """
         Send message to AI provider with Ollama-first routing
         Returns: (response, provider_used)
         NEVER returns placeholder - raises exception if no API available
         """
-        providers = self.get_available_providers()
+        # ALWAYS prioritize Ollama when no specific model is requested
+        if not model or model == "auto":
+            # Check if Ollama is available
+            if "ollama" in self.providers and self.ollama_manager.is_available:
+                # Select optimal Ollama model for this prompt
+                selected_model = self._select_optimal_ollama_model(message)
+                logger.info(f"Auto-selected Ollama model: {selected_model}")
+
+                # Force Ollama as first provider
+                ollama_provider = self.providers["ollama"]
+                if ollama_provider.enabled:
+                    # Ensure Ollama is marked as available
+                    ollama_provider.status = ProviderStatus.AVAILABLE
+                    providers = [ollama_provider]
+                    # Add other providers as fallback only
+                    other_providers = self.get_available_providers()
+                    for p in other_providers:
+                        if p.name != "ollama":
+                            providers.append(p)
+
+                    # Store selected model for use in _call_provider
+                    self._auto_selected_model = selected_model
+                else:
+                    providers = self.get_available_providers()
+            else:
+                providers = self.get_available_providers()
+        else:
+            # Specific model requested
+            specific_provider = self.select_provider_for_model(model)
+            if specific_provider and specific_provider.status == ProviderStatus.AVAILABLE:
+                # Try the specific provider first
+                providers = [specific_provider]
+                # Add other available providers as fallback
+                other_providers = self.get_available_providers()
+                for p in other_providers:
+                    if p.name != specific_provider.name:
+                        providers.append(p)
+            else:
+                providers = self.get_available_providers()
 
         if not providers:
             # NO PLACEHOLDER RESPONSES - Fail cleanly
@@ -301,8 +637,8 @@ class OptimizedAPIManager:
                 errors.append(error_msg)
                 provider.last_error = str(e)
 
-                # Check if rate limited
-                if "rate" in str(e).lower() or "429" in str(e):
+                # Check if rate limited (but never rate limit Ollama - it's local!)
+                if provider.name != "ollama" and ("rate" in str(e).lower() or "429" in str(e)):
                     provider.status = ProviderStatus.RATE_LIMITED
                     provider.rate_limit_reset = datetime.now() + timedelta(minutes=5)
 
@@ -381,7 +717,30 @@ class OptimizedAPIManager:
         """Call specific provider's API"""
 
         if provider.name == "ollama":
-            return await self._call_ollama(provider, message, model or provider.models[0] if provider.models else "llama2", **kwargs)
+            # Check for auto-selected model first
+            auto_selected = getattr(self, '_auto_selected_model', None)
+            if auto_selected:
+                model_to_use = auto_selected
+                # Clear after use
+                self._auto_selected_model = None
+            else:
+                # Use the actual model name if we resolved it earlier
+                actual_model = getattr(self, '_actual_model_name', None)
+                if actual_model and model:
+                    # If we have the actual name from resolution, use it
+                    model_to_use = actual_model
+                    # Clear it after use
+                    self._actual_model_name = None
+                else:
+                    # Otherwise, try to resolve it now or use optimal selection
+                    if model and self.ollama_manager.is_model_available(model):
+                        model_to_use = self.ollama_manager.get_actual_model_name(model) or model
+                    else:
+                        # Auto-select optimal model based on prompt
+                        model_to_use = self._select_optimal_ollama_model(message)
+
+            logger.info(f"Using Ollama model: {model_to_use}")
+            return await self._call_ollama(provider, message, model_to_use, **kwargs)
         elif provider.name == "openai":
             return await self._call_openai(provider, message, model or "gpt-3.5-turbo", **kwargs)
         elif provider.name == "anthropic":
@@ -581,6 +940,10 @@ class OptimizedAPIManager:
             logger.warning("No providers available!")
 
         logger.info("=" * 60)
+
+
+# Make OptimizedAPIManager available as APIManager for compatibility
+APIManager = OptimizedAPIManager
 
 
 if __name__ == "__main__":
