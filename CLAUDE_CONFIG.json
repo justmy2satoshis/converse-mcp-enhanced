@@ -1,0 +1,16 @@
+{
+  "converse-enhanced": {
+    "command": "python",
+    "args": ["C:\\Users\\User\\mcp-servers\\converse-mcp-enhanced\\src\\server.py"],
+    "env": {
+      "OLLAMA_HOST": "http://localhost:11434",
+      "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+      "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_KEY_HERE",
+      "GEMINI_API_KEY": "YOUR_GEMINI_KEY_HERE",
+      "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+      "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_KEY_HERE",
+      "LOG_LEVEL": "INFO",
+      "DISABLE_MOCK_RESPONSES": "true"
+    }
+  }
+}
