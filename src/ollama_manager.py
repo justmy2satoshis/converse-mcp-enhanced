@@ -338,23 +338,24 @@ class OllamaManager:
 
 # Test the manager if run directly
 if __name__ == "__main__":
+    import sys
     logging.basicConfig(level=logging.INFO)
 
-    print("Testing OllamaManager...")
+    print("Testing OllamaManager...", file=sys.stderr)
     manager = OllamaManager()
 
-    print(f"\nOllama Available: {manager.is_available}")
-    print(f"Models Found: {len(manager.available_models)}")
+    print(f"\nOllama Available: {manager.is_available}", file=sys.stderr)
+    print(f"Models Found: {len(manager.available_models)}", file=sys.stderr)
 
     for model in manager.available_models:
         info = manager.get_model_info(model)
         size_gb = info['size'] / (1024**3) if info else 0
-        print(f"  - {model} ({size_gb:.1f} GB)")
+        print(f"  - {model} ({size_gb:.1f} GB)", file=sys.stderr)
 
     # Test model name resolution
     test_names = ["llama3.2", "codellama", "phi3", "qwen2.5-coder", "ollama/llama3.2"]
-    print("\nModel Name Resolution Tests:")
+    print("\nModel Name Resolution Tests:", file=sys.stderr)
     for name in test_names:
         actual = manager.get_actual_model_name(name)
         available = manager.is_model_available(name)
-        print(f"  '{name}' -> '{actual}' (Available: {available})")
+        print(f"  '{name}' -> '{actual}' (Available: {available})", file=sys.stderr)
