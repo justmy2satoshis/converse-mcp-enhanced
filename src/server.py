@@ -952,15 +952,15 @@ if __name__ == "__main__":
 
     async def test():
         manager = OptimizedAPIManager()
-        print("\n=== Optimized API Manager Status ===")
-        print(json.dumps(manager.get_status_report(), indent=2))
+        print("\n=== Optimized API Manager Status ===", file=sys.stderr)
+        print(json.dumps(manager.get_status_report(), indent=2), file=sys.stderr)
 
         try:
-            print("\n=== Testing Message ===")
+            print("\n=== Testing Message ===", file=sys.stderr)
             response, provider = await manager.send_message("Hello, how are you?")
-            print(f"Provider used: {provider}")
-            print(f"Response: {response[:200]}...")
+            print(f"Provider used: {provider}", file=sys.stderr)
+            print(f"Response: {response[:200]}...", file=sys.stderr)
         except RuntimeError as e:
-            print(f"ERROR: {e}")
+            print(f"ERROR: {e}", file=sys.stderr)
 
     asyncio.run(test())
