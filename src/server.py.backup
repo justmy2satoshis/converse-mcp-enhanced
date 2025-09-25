@@ -945,6 +945,22 @@ class OptimizedAPIManager:
 # Make OptimizedAPIManager available as APIManager for compatibility
 APIManager = OptimizedAPIManager
 
-# Note: Test code removed to prevent server from exiting
-# For testing, run this module directly with a test script
-# The MCP server should use mcp_server.py as the entry point
+
+if __name__ == "__main__":
+    # Test the optimized API manager
+    import asyncio
+
+    async def test():
+        manager = OptimizedAPIManager()
+        print("\n=== Optimized API Manager Status ===", file=sys.stderr)
+        print(json.dumps(manager.get_status_report(), indent=2), file=sys.stderr)
+
+        try:
+            print("\n=== Testing Message ===", file=sys.stderr)
+            response, provider = await manager.send_message("Hello, how are you?")
+            print(f"Provider used: {provider}", file=sys.stderr)
+            print(f"Response: {response[:200]}...", file=sys.stderr)
+        except RuntimeError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+
+    asyncio.run(test())
