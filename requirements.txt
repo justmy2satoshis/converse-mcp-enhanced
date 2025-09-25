@@ -1,0 +1,22 @@
+# requirements.txt for converse-mcp-enhanced
+# MCP server for multi-provider AI model access
+
+# Core HTTP client for API calls
+httpx>=0.24.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Provider-specific SDKs (optional but recommended)
+openai>=1.0.0
+anthropic>=0.25.0
+google-generativeai>=0.5.0
+
+# General HTTP requests as fallback
+requests>=2.31.0
+
+# JSON handling (usually included in Python, but explicit for clarity)
+# json is built-in, no need to install
+
+# Async support (if needed for future enhancements)
+# aiohttp>=3.9.0  # Uncomment if adding async support

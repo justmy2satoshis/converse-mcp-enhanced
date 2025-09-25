@@ -1,6 +1,6 @@
 {
   "name": "converse-mcp-enhanced",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Multi-model AI conversation MCP for Claude Desktop - 80%+ cost optimization",
   "main": "src/server.py",
   "scripts": {
